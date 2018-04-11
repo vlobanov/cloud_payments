@@ -17,7 +17,11 @@ module CloudPayments
 
     def perform_request(path, params = nil)
       connection.basic_auth(config.public_key, config.secret_key)
-      response = connection.post(path, (params ? convert_to_json(params) : nil), headers)
+      response = connection.post(
+        path,
+        (params ? convert_to_json(params) : nil),
+        headers(params)
+      )
 
       Response.new(response.status, response.body, response.headers).tap do |response|
         raise_transport_error(response) if response.status.to_i >= 300
@@ -30,8 +34,13 @@ module CloudPayments
       config.serializer.dump(data)
     end
 
-    def headers
-      { 'Content-Type' => 'application/json' }
+    def headers(params)
+      base = { 'Content-Type' => 'application/json' }
+      if params[:request_id]
+        base.merge({'X-Request-ID' => params[:request_id]})
+      else
+        base
+      end
     end
 
     def logger
